@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #video {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            background-color: #5cb85c;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+            background-color: white;
+        }
+        th {
+            background-color: #5bc0de;
+            color: white;
+        }
+        img {
+            width: 100px;
+            height: auto;
+            border-radius: 5px;
+        }
+        .actions button {
+            background-color: #d9534f;
+        }
+        .actions button:hover {
+            background-color: #c9302c;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .modal-content img {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border-radius: 5px;
+        }
+        .close {
+            background-color: #5cb85c;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            color: white;
+            border-radius: 5px;
+        }
+        .close:hover {
+            background-color: #4cae4c;
+        }
+    </style>
+</head>
+<body>
+    <!-- <h1>Attendance System</h1> -->
+    <video id="video" autoplay></video>
+    <button id="capture">Capture You</button>
+
+    <h2>Upload Image</h2>
+    <input type="file" id="fileInput" accept="image/*">
+    <button id="upload">Upload Photo</button>
+
+    <h2>Today Presence</h2>
+    <table>
+        <tr>
+            <th>SN</th>
+            <th>Image</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th class="actions">Actions</th>
+        </tr>
+        {% for image in images %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td><img src="{{ url_for('static', filename='captured_images/' + image) }}" alt="Captured Image"></td>
+            <td>{{ image.split('_')[1].replace('.jpg', '') }}</td>
+            <td>Present</td>
+            <td class="actions">
+                <button onclick="openModal('{{ url_for('static', filename='captured_images/' + image) }}')">View</button>
+                <form action="{{ url_for('delete_image', image_index=loop.index0) }}" method="post" style="display:inline;">
+                    <button type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">Close</span>
+            <img id="modalImage" src="" alt="View Image">
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const captureButton = document.getElementById('capture');
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('upload');
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+
+        function startVideo() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Camera access denied:", err);
+                    alert("Could not access the camera. Please check your permissions or try another browser.");
+                });
+        }
+
+        captureButton.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/jpeg');
+
+            fetch('/upload', {
+                method: 'POST',
+                body: new URLSearchParams({ image: dataURL })
+            }).then(() => {
+                location.reload();
+            });
+        });
+
+        uploadButton.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const dataURL = event.target.result;
+
+                    fetch('/upload', {
+                        method: 'POST',
+                        body: new URLSearchParams({ image: dataURL })
+                    }).then(() => {
+                        location.reload();
+                    });
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert("Please select a file to upload.");
+            }
+        });
+
+        function openModal(imageSrc) {
+            modal.style.display = "flex";
+            modalImage.src = imageSrc;
+        }
+
+        function closeModal() {
+            modal.style.display = "none";
+        }
+
+        window.onload = startVideo;
+    </script>
+</body>
+</html>
