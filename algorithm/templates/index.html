@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image List</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        img {
+            width: 100px; /* Adjust the size as needed */
+            height: auto; /* Maintain aspect ratio */
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .modal-header {
+            font-weight: bold;
+        }
+        .modal-close {
+            float: right;
+            cursor: pointer;
+            color: red;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h2>Image List</h2>
+    <button id="load-images-btn">View Images</button>
+    <table id="image-table" style="display:none;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Image</th> <!-- Added Image Column -->
+                <th>Present Status</th>
+            </tr>
+        </thead>
+        <tbody id="image-table-body">
+            <!-- Image data will be inserted here dynamically -->
+        </tbody>
+    </table>
+
+    <!-- Modal for showing image details -->
+    <div class="overlay"></div>
+    <div class="modal" id="image-modal">
+        <div class="modal-header">
+            Image Details
+            <span class="modal-close">X</span>
+        </div>
+        <div class="modal-body">
+            <p><strong>ID:</strong> <span id="modal-id"></span></p>
+            <p><strong>Name:</strong> <span id="modal-name"></span></p>
+            <p><strong>Type:</strong> <span id="modal-type"></span></p>
+            <p><strong>Path:</strong> <span id="modal-path"></span></p>
+            <p><strong>Present Status:</strong> <span id="modal-status"></span></p>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // Load image data from the Flask API
+            $('#load-images-btn').on('click', function () {
+                $.getJSON('/api/images', function (data) {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    // Show table and load image data
+                    $('#image-table').show();
+                    let rows = '';
+                    data.forEach(function (image) {
+                        let statusText = image.presentStatus ? 'Present' : 'Absent';
+                        rows += `
+                            <tr data-id="${image.id}" data-name="${image.name}" data-type="${image.type}" data-path="${image.path}" data-status="${statusText}">
+                                <td>${image.id}</td>
+                                <td>${image.name}</td>
+                                <td>${image.type}</td>
+                                <td><img src="${image.path}" alt="${image.name}" /></td> <!-- Display Image -->
+                                <td>${statusText}</td>
+                            </tr>
+                        `;
+                    });
+                    $('#image-table-body').html(rows);
+                });
+            });
+
+            // When a row is clicked, show the modal with the image details
+            $(document).on('click', '#image-table-body tr', function () {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                const type = $(this).data('type');
+                const path = $(this).data('path');
+                const status = $(this).data('status');
+
+                // Populate the modal with the image data
+                $('#modal-id').text(id);
+                $('#modal-name').text(name);
+                $('#modal-type').text(type);
+                $('#modal-path').text(path);
+                $('#modal-status').text(status);
+
+                // Show the modal and overlay
+                $('.overlay').show();
+                $('#image-modal').show();
+            });
+
+            // Close the modal when 'X' is clicked
+            $('.modal-close').on('click', function () {
+                $('.overlay').hide();
+                $('#image-modal').hide();
+            });
+
+            // Close the modal when the overlay is clicked
+            $('.overlay').on('click', function () {
+                $(this).hide();
+                $('#image-modal').hide();
+            });
+        });
+    </script>
+</body>
+</html>
