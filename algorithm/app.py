@@ -1,43 +1,29 @@
-# import requests
-# from flask import Flask, render_template, jsonify
-
-# app = Flask(__name__)
-
-# # API endpoint to get images from your Spring Boot API
-# API_URL = "http://localhost:8080/api/images/list"  # Change this to your Spring Boot API URL
-
-# @app.route('/')
-# def index():
-#     try:
-#         # Make a GET request to the Spring Boot API
-#         response = requests.get(API_URL)
-#         print
-#         images = response.json()  # Convert the response to JSON
-#         return render_template('index.html', images=images)
-#     except Exception as e:
-#         print(f"Error fetching images: {e}")
-#         return "Error fetching images", 500
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
-import requests
 from flask import Flask, render_template, jsonify
+import requests
 
 app = Flask(__name__)
 
-# API endpoint to get images from your Spring Boot API
-API_URL = "http://localhost:8080/api/images/list"
-
+# Define route for the home page that renders the table
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+# Define a route to fetch image data from the external Spring Boot API
+@app.route('/api/images', methods=['GET'])
+def get_images():
     try:
-        # Make a GET request to the Spring Boot API
-        response = requests.get(API_URL)
-        images = response.json()  # Convert the response to JSON
-        return render_template('index.html', images=images)
+        # Replace with the actual URL of your Spring Boot API
+        api_url = 'http://localhost:8082/api/images/list'
+        response = requests.get(api_url)
+
+        # If the API request is successful
+        if response.status_code == 200:
+            images = response.json()
+            return jsonify(images)
+        else:
+            return jsonify({"error": "Unable to fetch image data"}), response.status_code
     except Exception as e:
-        print(f"Error fetching images: {e}")
-        return "Error fetching images", 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

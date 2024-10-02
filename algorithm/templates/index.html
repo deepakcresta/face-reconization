@@ -60,7 +60,7 @@
                 <th>ID</th>
                 <th>Name</th>
                 <th>Type</th>
-                <th>Image</th> <!-- Added Image Column -->
+                <th>Image</th>
                 <th>Present Status</th>
             </tr>
         </thead>
@@ -94,18 +94,23 @@
                         alert(data.error);
                         return;
                     }
-                    
+
                     // Show table and load image data
                     $('#image-table').show();
                     let rows = '';
                     data.forEach(function (image) {
                         let statusText = image.presentStatus ? 'Present' : 'Absent';
+                        
+                        // Replace backslashes in the image path
+                        let imagePath = image.path.replace(/\\/g, '/');
+                        
+                        // Create table rows
                         rows += `
-                            <tr data-id="${image.id}" data-name="${image.name}" data-type="${image.type}" data-path="${image.path}" data-status="${statusText}">
+                            <tr data-id="${image.id}" data-name="${image.name}" data-type="${image.type}" data-path="${imagePath}" data-status="${statusText}">
                                 <td>${image.id}</td>
                                 <td>${image.name}</td>
                                 <td>${image.type}</td>
-                                <td><img src="${image.path}" alt="${image.name}" /></td> <!-- Display Image -->
+                                <td><img src="http://localhost:8082/api/images/view?imagePath=${imagePath}" alt="${image.name}" class="img-thumbnail" style="max-width: 200px;" /></td>
                                 <td>${statusText}</td>
                             </tr>
                         `;
