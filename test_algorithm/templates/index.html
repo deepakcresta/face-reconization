@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload and Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1, h2 {
+            margin-bottom: 10px;
+        }
+        img {
+            max-width: 400px;
+            display: block;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Capture or Upload Image</h1>
+    <button id="captureButton">Capture Image</button>
+    <input type="file" id="uploadInput" accept="image/*" style="display: none;"/>
+    <button id="uploadButton">Upload Image</button>
+
+    <h2>Uploaded/Captured Image</h2>
+    <img id="uploadedImage" src="" alt="Uploaded Image" style="display:none;"/>
+
+    <h2>Comparison Results</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Image ID</th>
+                <th>Uploaded Image</th>
+                <th>Similarity Score</th>
+                <th>Match Status</th>
+            </tr>
+        </thead>
+        <tbody id="resultTableBody">
+        </tbody>
+    </table>
+
+    <script>
+        document.getElementById('captureButton').addEventListener('click', function() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    const video = document.createElement('video');
+                    video.autoplay = true;
+                    video.srcObject = stream;
+
+                    const captureCanvas = document.createElement('canvas');
+                    const context = captureCanvas.getContext('2d');
+
+                    document.body.appendChild(video);
+
+                    video.addEventListener('loadedmetadata', function() {
+                        captureCanvas.width = video.videoWidth;
+                        captureCanvas.height = video.videoHeight;
+                    });
+
+                    const captureImageButton = document.createElement('button');
+                    captureImageButton.textContent = 'Capture Image';
+                    document.body.appendChild(captureImageButton);
+
+                    captureImageButton.addEventListener('click', function() {
+                        context.drawImage(video, 0, 0);
+                        const dataURL = captureCanvas.toDataURL('image/png');
+
+                        stream.getTracks().forEach(track => track.stop());
+                        video.remove();
+                        captureImageButton.remove();
+
+                        const img = document.getElementById('uploadedImage');
+                        img.src = dataURL;
+                        img.style.display = 'block';
+
+                        // Send the image data to the server
+                        fetch('/compare', {
+                            method: 'POST',
+                            body: JSON.stringify({ file: dataURL }),
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            displayResults(data);
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                    });
+                })
+                .catch(function(err) {
+                    console.error("Error accessing the camera: " + err);
+                });
+        });
+
+        document.getElementById('uploadButton').addEventListener('click', function() {
+            document.getElementById('uploadInput').click();
+        });
+
+        document.getElementById('uploadInput').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = document.getElementById('uploadedImage');
+                    img.src = event.target.result;
+                    img.style.display = 'block';
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    fetch('/compare', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        displayResults(data);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function displayResults(data) {
+            const resultTableBody = document.getElementById('resultTableBody');
+            resultTableBody.innerHTML = ''; // Clear previous results
+            const uploadedImg = `<img src="data:image/png;base64,${data.uploaded_image}" alt="Uploaded Image" style="max-width: 100px;">`;
+
+            data.match_results.forEach(result => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${result.image_info.id}</td>
+                    <td>${uploadedImg}</td>
+                    <td>${result.similarity_score.toFixed(2)}</td>
+                    <td>${result.match_status}</td>
+                `;
+                resultTableBody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
